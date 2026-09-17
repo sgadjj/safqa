@@ -29,18 +29,27 @@ function AuthPage() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    const parsed = schema.safeParse({ ...values, displayName: signup ? values.displayName : undefined });
-    if (!parsed.success) return toast.error(parsed.error.issues[0]?.message ?? "تحقق من البيانات");
+    const parsed = schema.safeParse({ ...values, displayName: signup ? values["displayName"] : undefined });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "تحقق من البيانات");
+      return;
+    }
     setLoading(true);
     if (signup) {
       const { data, error } = await supabase.auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: { emailRedirectTo: window.location.origin, data: { display_name: parsed.data.displayName } } });
       setLoading(false);
-      if (error) return toast.error(error.message);
-      if (!data.session) return toast.success("تحقق من بريدك لتأكيد الحساب");
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (!data.session) {
+        toast.success("تحقق من بريدك لتأكيد الحساب");
+        return;
+      }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-      if (error) { setLoading(false); return toast.error("بيانات الدخول غير صحيحة"); }
-      await supabase.from("profiles").upsert({ id: data.user.id, display_name: String(data.user.user_metadata.display_name ?? parsed.data.email.split("@")[0]) }, { onConflict: "id" });
+      if (error) { setLoading(false); toast.error("بيانات الدخول غير صحيحة"); return; }
+      await supabase.from("profiles").upsert({ id: data.user.id, display_name: String(data.user.user_metadata["display_name"] ?? parsed.data.email.split("@")[0]) }, { onConflict: "id" });
       setLoading(false);
       await navigate({ to: "/admin" });
     }

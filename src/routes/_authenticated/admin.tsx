@@ -28,7 +28,10 @@ function AdminPage() {
   useEffect(() => { void load(); }, []);
   async function setStatus(id: string, status: Message["status"]) {
     const { error } = await supabase.from("support_messages").update({ status }).eq("id", id);
-    if (error) return toast.error("تعذر تحديث الحالة");
+    if (error) {
+      toast.error("تعذر تحديث الحالة");
+      return;
+    }
     setMessages((items) => items.map((item) => item.id === id ? { ...item, status } : item));
   }
   async function signOut() {
