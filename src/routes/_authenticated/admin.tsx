@@ -1,45 +1,384 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Clock3, Handshake, Inbox, LogOut, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  CheckCircle2,
+  Clock3,
+  Handshake,
+  ImagePlus,
+  Inbox,
+  LogOut,
+  MessagesSquare,
+  RefreshCw,
+  Send,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { createAdminImageUpload, createApkUpload, signAdminImages } from "@/lib/storage.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "لوحة الإدارة | صفقة" }, { name: "description", content: "إدارة رسائل دعم صفقة." }, { property: "og:title", content: "لوحة الإدارة | صفقة" }, { property: "og:description", content: "إدارة رسائل دعم صفقة." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({
+    meta: [
+      { title: "لوحة الإدارة | صفقة" },
+      { name: "description", content: "إدارة محادثات دعم صفقة ورفع ملف التطبيق." },
+      { property: "og:title", content: "لوحة الإدارة | صفقة" },
+      { property: "og:description", content: "إدارة محادثات دعم صفقة ورفع ملف التطبيق." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminPage,
 });
 
-type Message = { id: string; sender_name: string; sender_email: string; subject: string; message: string; status: "new" | "in_progress" | "resolved"; created_at: string };
+type Thread = {
+  id: string;
+  guest_label: string;
+  status: "new" | "in_progress" | "resolved";
+  last_message_at: string;
+  created_at: string;
+};
+
+type Message = {
+  id: string;
+  thread_id: string;
+  sender: string;
+  body: string | null;
+  image_url: string | null;
+  created_at: string;
+};
+
+const statusLabel: Record<Thread["status"], string> = {
+  new: "جديدة",
+  in_progress: "قيد المتابعة",
+  resolved: "محلولة",
+};
 
 function AdminPage() {
   const { user } = Route.useRouteContext();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [admin, setAdmin] = useState<boolean | null>(null);
   const navigate = useNavigate();
-  async function load() {
-    const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-    const allowed = Boolean(role);
-    setAdmin(allowed);
-    if (!allowed) return;
-    const { data, error } = await supabase.from("support_messages").select("id,sender_name,sender_email,subject,message,status,created_at").order("created_at", { ascending: false });
-    if (error) toast.error("تعذر تحميل الرسائل"); else setMessages((data ?? []) as Message[]);
-  }
-  useEffect(() => { void load(); }, []);
-  async function setStatus(id: string, status: Message["status"]) {
-    const { error } = await supabase.from("support_messages").update({ status }).eq("id", id);
+  const [admin, setAdmin] = useState<boolean | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [images, setImages] = useState<Record<string, string>>({});
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [apkBusy, setApkBusy] = useState(false);
+  const [apkInfo, setApkInfo] = useState<{ version: string | null; size: number | null }>({ version: null, size: null });
+  const fileRef = useRef<HTMLInputElement>(null);
+  const apkRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const uploadImage = useServerFn(createAdminImageUpload);
+  const signImages = useServerFn(signAdminImages);
+  const uploadApk = useServerFn(createApkUpload);
+
+  const loadThreads = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("chat_threads")
+      .select("id,guest_label,status,last_message_at,created_at")
+      .order("last_message_at", { ascending: false });
+    if (error) {
+      toast.error("تعذر تحميل المحادثات");
+      return;
+    }
+    setThreads((data ?? []) as Thread[]);
+  }, []);
+
+  const loadMessages = useCallback(
+    async (threadId: string) => {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("id,thread_id,sender,body,image_url,created_at")
+        .eq("thread_id", threadId)
+        .order("created_at");
+      const rows = (data ?? []) as Message[];
+      setMessages(rows);
+      const paths = rows.map((row) => row.image_url).filter((p): p is string => Boolean(p));
+      if (paths.length > 0) {
+        const signed = await signImages({ data: { paths } });
+        setImages(signed as Record<string, string>);
+      }
+    },
+    [signImages],
+  );
+
+  useEffect(() => {
+    void (async () => {
+      const { data: role } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      const allowed = Boolean(role);
+      setAdmin(allowed);
+      if (!allowed) return;
+      await loadThreads();
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("apk_version,apk_size")
+        .eq("id", true)
+        .maybeSingle();
+      if (settings) setApkInfo({ version: settings.apk_version, size: settings.apk_size });
+    })();
+  }, [user.id, loadThreads]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    void loadMessages(activeId);
+    const timer = window.setInterval(() => void loadMessages(activeId), 6000);
+    return () => window.clearInterval(timer);
+  }, [activeId, loadMessages]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length]);
+
+  async function setStatus(id: string, status: Thread["status"]) {
+    const { error } = await supabase.from("chat_threads").update({ status }).eq("id", id);
     if (error) {
       toast.error("تعذر تحديث الحالة");
       return;
     }
-    setMessages((items) => items.map((item) => item.id === id ? { ...item, status } : item));
+    setThreads((items) => items.map((item) => (item.id === id ? { ...item, status } : item)));
   }
+
+  async function sendReply(body: string | null, imagePath: string | null) {
+    if (!activeId) return;
+    const { error } = await supabase
+      .from("chat_messages")
+      .insert({ thread_id: activeId, sender: "admin", body, image_url: imagePath });
+    if (error) {
+      toast.error("تعذر إرسال الرد");
+      return;
+    }
+    await supabase.from("chat_threads").update({ status: "in_progress" }).eq("id", activeId);
+    setThreads((items) => items.map((item) => (item.id === activeId ? { ...item, status: "in_progress" } : item)));
+    await loadMessages(activeId);
+  }
+
+  async function submitReply(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = reply.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    setReply("");
+    await sendReply(value, null);
+    setBusy(false);
+  }
+
+  async function attachImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
+    setBusy(true);
+    try {
+      const upload = await uploadImage({ data: { ext } });
+      const { error } = await supabase.storage.from("chat-images").uploadToSignedUrl(upload.path, upload.token, file);
+      if (error) throw error;
+      await sendReply(null, upload.path);
+    } catch {
+      toast.error("تعذر رفع الصورة");
+    }
+    setBusy(false);
+  }
+
+  async function handleApk(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".apk")) {
+      toast.error("اختر ملف APK");
+      return;
+    }
+    const version = window.prompt("رقم إصدار التطبيق (مثال 1.0.0)", apkInfo.version ?? "1.0.0");
+    if (!version) return;
+    setApkBusy(true);
+    try {
+      const upload = await uploadApk({ data: { version } });
+      const { error } = await supabase.storage.from("app-downloads").uploadToSignedUrl(upload.path, upload.token, file);
+      if (error) throw error;
+      const { error: settingsError } = await supabase
+        .from("app_settings")
+        .update({ apk_url: upload.path, apk_version: version, apk_size: file.size, updated_at: new Date().toISOString() })
+        .eq("id", true);
+      if (settingsError) throw settingsError;
+      setApkInfo({ version, size: file.size });
+      toast.success("تم رفع ملف التطبيق وتفعيل زر التحميل");
+    } catch {
+      toast.error("تعذر رفع ملف التطبيق");
+    }
+    setApkBusy(false);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     await navigate({ to: "/auth", replace: true });
   }
-  if (admin === null) return <main className="grid min-h-screen place-items-center"><RefreshCw className="animate-spin text-primary" /></main>;
-  if (!admin) return <main className="grid min-h-screen place-items-center px-5 text-center"><div><Handshake className="mx-auto size-12 text-primary" /><h1 className="mt-5 font-display text-3xl">حساب مستخدم</h1><p className="mt-3 text-muted-foreground">هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة.</p><Link to="/" className="mt-6 inline-block text-primary">العودة للرئيسية</Link></div></main>;
-  const counts = { new: messages.filter(m => m.status === "new").length, progress: messages.filter(m => m.status === "in_progress").length, resolved: messages.filter(m => m.status === "resolved").length };
-  return <main className="min-h-screen"><header className="border-b border-border"><div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-5"><Link to="/" className="flex items-center gap-2 font-display"><Handshake className="text-primary" />صفقة | الإدارة</Link><Button variant="ghost" onClick={signOut}><LogOut />خروج</Button></div></header><div className="mx-auto max-w-[1200px] px-5 py-10"><div className="flex items-end justify-between gap-4"><div><p className="text-sm text-primary">مركز الدعم</p><h1 className="font-display text-4xl">رسائل المستخدمين</h1></div><Button variant="glass" size="icon" onClick={load} aria-label="تحديث"><RefreshCw /></Button></div><div className="mt-8 grid gap-4 sm:grid-cols-3">{[[Inbox,"جديدة",counts.new],[Clock3,"قيد المتابعة",counts.progress],[CheckCircle2,"محلولة",counts.resolved]].map(([Icon,label,count]) => { const I = Icon as typeof Inbox; return <div key={String(label)} className="rounded-lg border border-border bg-card p-5"><I className="text-primary" /><div className="mt-4 text-3xl font-bold">{String(count)}</div><div className="text-sm text-muted-foreground">{String(label)}</div></div>})}</div><div className="mt-8 space-y-4">{messages.length === 0 ? <div className="rounded-lg border border-dashed border-border p-12 text-center text-muted-foreground">لا توجد رسائل حالياً</div> : messages.map(message => <article key={message.id} className="rounded-lg border border-border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-display text-lg">{message.subject}</h2><p className="text-sm text-muted-foreground">{message.sender_name} · {message.sender_email}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">{message.status === "new" ? "جديدة" : message.status === "in_progress" ? "قيد المتابعة" : "محلولة"}</span></div><p className="mt-4 whitespace-pre-wrap leading-7 text-foreground/80">{message.message}</p><div className="mt-5 flex flex-wrap gap-2"><Button size="sm" variant="glass" onClick={() => setStatus(message.id,"in_progress")}><Clock3 />قيد المتابعة</Button><Button size="sm" variant="hero" onClick={() => setStatus(message.id,"resolved")}><CheckCircle2 />تم الحل</Button></div></article>)}</div></div></main>;
+
+  if (admin === null)
+    return (
+      <main className="grid min-h-screen place-items-center">
+        <RefreshCw className="animate-spin text-primary" />
+      </main>
+    );
+
+  if (!admin)
+    return (
+      <main className="grid min-h-screen place-items-center px-5 text-center">
+        <div>
+          <Handshake className="mx-auto size-12 text-primary" />
+          <h1 className="mt-5 font-display text-3xl">حساب مستخدم</h1>
+          <p className="mt-3 text-muted-foreground">هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة.</p>
+          <Link to="/" className="mt-6 inline-block text-primary">العودة للرئيسية</Link>
+        </div>
+      </main>
+    );
+
+  const counts = {
+    new: threads.filter((t) => t.status === "new").length,
+    progress: threads.filter((t) => t.status === "in_progress").length,
+    resolved: threads.filter((t) => t.status === "resolved").length,
+  };
+  const active = threads.find((t) => t.id === activeId) ?? null;
+
+  return (
+    <main className="min-h-screen">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-5">
+          <Link to="/" className="flex items-center gap-2 font-display"><Handshake className="text-primary" />صفقة | الإدارة</Link>
+          <Button variant="ghost" onClick={signOut}><LogOut />خروج</Button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1280px] px-5 py-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm text-primary">مركز الدعم</p>
+            <h1 className="font-display text-4xl">محادثات المستخدمين</h1>
+          </div>
+          <Button variant="glass" size="icon" onClick={() => void loadThreads()} aria-label="تحديث"><RefreshCw /></Button>
+        </div>
+
+        <div className="mt-7 grid gap-4 sm:grid-cols-4">
+          {([
+            [Inbox, "جديدة", counts.new],
+            [Clock3, "قيد المتابعة", counts.progress],
+            [CheckCircle2, "محلولة", counts.resolved],
+            [MessagesSquare, "الكل", threads.length],
+          ] as const).map(([Icon, label, count]) => (
+            <div key={label} className="rounded-lg border border-border bg-card p-5">
+              <Icon className="text-primary" />
+              <div className="mt-4 text-3xl font-bold">{count}</div>
+              <div className="text-sm text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
+
+        <section className="mt-6 rounded-xl border border-border bg-card/50 p-5 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-lg">ملف التطبيق (APK)</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {apkInfo.version
+                  ? `الإصدار الحالي ${apkInfo.version} · ${apkInfo.size ? (apkInfo.size / 1048576).toFixed(1) : "?"} ميغابايت`
+                  : "لم يُرفع أي ملف بعد — زر التحميل في الواجهة ينتظر الملف."}
+              </p>
+            </div>
+            <input ref={apkRef} type="file" accept=".apk" hidden onChange={handleApk} />
+            <Button variant="hero" disabled={apkBusy} onClick={() => apkRef.current?.click()}>
+              <UploadCloud />{apkBusy ? "جارٍ الرفع" : "رفع ملف APK"}
+            </Button>
+          </div>
+        </section>
+
+        <div className="mt-6 grid gap-5 lg:grid-cols-[320px_1fr]">
+          <aside className="space-y-2 rounded-xl border border-border bg-card/40 p-3">
+            {threads.length === 0 && (
+              <p className="p-6 text-center text-sm text-muted-foreground">لا توجد محادثات بعد</p>
+            )}
+            {threads.map((thread) => (
+              <button
+                key={thread.id}
+                type="button"
+                onClick={() => setActiveId(thread.id)}
+                className={`w-full rounded-lg border p-3 text-right transition-colors ${thread.id === activeId ? "border-primary/60 bg-primary/10" : "border-border hover:bg-secondary/50"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display text-sm">{thread.guest_label} · {thread.id.slice(0, 6)}</span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{statusLabel[thread.status]}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {new Date(thread.last_message_at).toLocaleString("ar-IQ")}
+                </p>
+              </button>
+            ))}
+          </aside>
+
+          <section className="flex min-h-[520px] flex-col rounded-xl border border-border bg-card/40">
+            {!active ? (
+              <div className="grid flex-1 place-items-center p-10 text-center text-muted-foreground">
+                اختر محادثة من القائمة لعرض الرسائل والرد عليها
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+                  <div>
+                    <h2 className="font-display text-lg">{active.guest_label} · {active.id.slice(0, 6)}</h2>
+                    <p className="text-xs text-muted-foreground">بدأت {new Date(active.created_at).toLocaleDateString("ar-IQ")}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="glass" onClick={() => setStatus(active.id, "in_progress")}><Clock3 />قيد المتابعة</Button>
+                    <Button size="sm" variant="hero" onClick={() => setStatus(active.id, "resolved")}><CheckCircle2 />تم الحل</Button>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  {messages.map((message) => {
+                    const mine = message.sender === "admin";
+                    return (
+                      <div key={message.id} className={mine ? "flex justify-end" : "flex justify-start"}>
+                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
+                          {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
+                          {message.image_url && images[message.image_url] && (
+                            <a href={images[message.image_url]} target="_blank" rel="noreferrer">
+                              <img src={images[message.image_url]} alt="صورة مرفقة" loading="lazy" className="mt-1 max-h-72 rounded-lg object-cover" />
+                            </a>
+                          )}
+                          <span className={`mt-1 block text-[11px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                            {new Date(message.created_at).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={endRef} />
+                </div>
+
+                <form onSubmit={submitReply} className="flex items-center gap-2 border-t border-border p-3">
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={attachImage} />
+                  <Button type="button" variant="ghost" size="icon" aria-label="إرفاق صورة" disabled={busy} onClick={() => fileRef.current?.click()}>
+                    <ImagePlus />
+                  </Button>
+                  <Input
+                    value={reply}
+                    onChange={(event) => setReply(event.target.value)}
+                    placeholder="اكتب ردك للمستخدم..."
+                    maxLength={2000}
+                    aria-label="نص الرد"
+                  />
+                  <Button type="submit" variant="hero" size="icon" aria-label="إرسال" disabled={busy}><Send /></Button>
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      </div>
+    </main>
+  );
 }
