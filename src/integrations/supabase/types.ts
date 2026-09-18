@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          apk_size: number | null
+          apk_url: string | null
+          apk_version: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          apk_size?: number | null
+          apk_url?: string | null
+          apk_version?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          apk_size?: number | null
+          apk_url?: string | null
+          apk_version?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          sender: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          sender: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          sender?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          guest_label: string
+          guest_token: string
+          id: string
+          last_message_at: string
+          status: Database["public"]["Enums"]["support_status"]
+        }
+        Insert: {
+          created_at?: string
+          guest_label?: string
+          guest_token: string
+          id?: string
+          last_message_at?: string
+          status?: Database["public"]["Enums"]["support_status"]
+        }
+        Update: {
+          created_at?: string
+          guest_label?: string
+          guest_token?: string
+          id?: string
+          last_message_at?: string
+          status?: Database["public"]["Enums"]["support_status"]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -106,7 +192,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      guest_messages: {
+        Args: { _token: string }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          image_url: string
+          sender: string
+        }[]
+      }
+      guest_send_message: {
+        Args: { _body: string; _image_url?: string; _token: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "user"
