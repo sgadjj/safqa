@@ -72,11 +72,10 @@ export function SupportChat() {
   }, [messages.length, open]);
 
   async function send(body: string | null, imagePath: string | null) {
-    const { error } = await supabase.rpc("guest_send_message", {
-      _token: token,
-      _body: body ?? "",
-      _image_url: imagePath ?? undefined,
-    });
+    const payload = imagePath
+      ? { _token: token, _body: body ?? "", _image_url: imagePath }
+      : { _token: token, _body: body ?? "" };
+    const { error } = await supabase.rpc("guest_send_message", payload);
     if (error) {
       toast.error("تعذر إرسال الرسالة، حاول مرة أخرى");
       return;
