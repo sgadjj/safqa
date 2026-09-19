@@ -183,9 +183,11 @@ function Index() {
             </Button>
             <div className="absolute inset-x-0 bottom-0 z-10 flex justify-center gap-2" aria-label="اختيار صورة">
               {gallery.map((item, index) => (
-                <button
+                <Button
                   key={item.label}
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   className={`h-1.5 rounded-full transition-all ${index === activeSlide ? "w-8 bg-primary" : "w-2 bg-muted-foreground/40"}`}
                   onClick={() => setActiveSlide(index)}
                   aria-label={`عرض ${item.label}`}

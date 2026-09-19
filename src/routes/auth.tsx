@@ -19,7 +19,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const ADMIN_EMAIL = "ssjeeheh@gmail.com";
 const schema = z.object({ email: z.string().email("البريد غير صحيح"), password: z.string().min(8, "كلمة المرور 8 أحرف على الأقل") });
 
 function AuthPage() {
@@ -31,10 +30,6 @@ function AuthPage() {
     const parsed = schema.safeParse(values);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "تحقق من البيانات");
-      return;
-    }
-    if (parsed.data.email.toLowerCase() !== ADMIN_EMAIL) {
-      toast.error("بيانات الدخول غير صحيحة");
       return;
     }
     setLoading(true);

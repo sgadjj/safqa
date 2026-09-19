@@ -74,8 +74,8 @@ export function SupportChat() {
   async function send(body: string | null, imagePath: string | null) {
     const { error } = await supabase.rpc("guest_send_message", {
       _token: token,
-      _body: body,
-      _image_url: imagePath,
+      _body: body ?? "",
+      _image_url: imagePath ?? undefined,
     });
     if (error) {
       toast.error("تعذر إرسال الرسالة، حاول مرة أخرى");
