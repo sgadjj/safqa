@@ -68,7 +68,6 @@ const gallery = [
 function Index() {
   const [loading, setLoading] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
-  const logoPressTimer = useRef<number | null>(null);
   const touchStartX = useRef<number | null>(null);
   const navigate = useNavigate();
   const fetchDownload = useServerFn(getAppDownload);
@@ -84,14 +83,7 @@ function Index() {
     void navigate({ to: "/auth" });
   }
 
-  function beginLogoPress() {
-    logoPressTimer.current = window.setTimeout(openAdmin, 900);
-  }
 
-  function cancelLogoPress() {
-    if (logoPressTimer.current !== null) window.clearTimeout(logoPressTimer.current);
-    logoPressTimer.current = null;
-  }
 
   function moveSlide(direction: number) {
     setActiveSlide((current) => (current + direction + gallery.length) % gallery.length);
@@ -125,10 +117,6 @@ function Index() {
             onClick={(event) => {
               if (event.detail >= 3) openAdmin();
             }}
-            onPointerDown={beginLogoPress}
-            onPointerUp={cancelLogoPress}
-            onPointerLeave={cancelLogoPress}
-            onPointerCancel={cancelLogoPress}
           >
             <span className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Handshake className="size-5" />
