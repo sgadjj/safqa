@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowDownToLine,
   Building2,
   CarFront,
+  ChevronLeft,
+  ChevronRight,
   Handshake,
   Hammer,
   MessagesSquare,
@@ -56,6 +58,7 @@ const categories = [
 ];
 
 const gallery = [
+  { src: appShowcase, alt: "واجهة تطبيق صفقة لطلب وشراء هاتف", label: "بيع وشراء الأجهزة" },
   { src: showcaseCar, alt: "محادثة صفقة لطلب قطعة غيار سيارة", label: "قطع السيارات" },
   { src: showcaseFood, alt: "محادثة صفقة لطلب بيتزا من مطعم", label: "المطاعم" },
   { src: showcaseHome, alt: "محادثة صفقة لعرض شقة للإيجار", label: "العقارات" },
@@ -64,7 +67,27 @@ const gallery = [
 
 function Index() {
   const [loading, setLoading] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const navigate = useNavigate();
   const fetchDownload = useServerFn(getAppDownload);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % gallery.length);
+    }, 5200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function openAdmin() {
+    void navigate({ to: "/auth" });
+  }
+
+
+
+  function moveSlide(direction: number) {
+    setActiveSlide((current) => (current + direction + gallery.length) % gallery.length);
+  }
 
   async function download() {
     setLoading(true);
@@ -85,14 +108,21 @@ function Index() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <section className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute -right-40 -top-40 size-[42rem] rounded-full bg-primary/10 blur-[130px]" />
         <header className="relative z-10 mx-auto flex max-w-[1200px] items-center justify-between px-5 py-5 sm:px-8">
-          <Link to="/" className="flex items-center gap-3" aria-label="صفقة - الرئيسية">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto gap-3 px-0 hover:bg-transparent"
+            aria-label="صفقة"
+            onClick={(event) => {
+              if (event.detail >= 3) openAdmin();
+            }}
+          >
             <span className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Handshake className="size-5" />
             </span>
             <span className="font-display text-xl">صفقة</span>
-          </Link>
+          </Button>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex" aria-label="التنقل الرئيسي">
             <a href="#services" className="transition-colors hover:text-foreground">الخدمات</a>
             <a href="#gallery" className="transition-colors hover:text-foreground">من داخل التطبيق</a>
@@ -103,20 +133,70 @@ function Index() {
           </Button>
         </header>
 
-        <div className="relative z-10 mx-auto grid max-w-[1200px] items-center gap-10 px-5 pb-20 pt-10 sm:px-8 lg:grid-cols-[1.1fr_.9fr] lg:pt-14">
-          <div className="animate-rise">
+        <div className="relative z-10 mx-auto max-w-[1200px] px-5 pb-20 pt-5 sm:px-8 lg:pt-8">
+          <div
+            className="relative mx-auto mb-10 min-h-[420px] max-w-[780px] overflow-hidden sm:min-h-[560px]"
+            onTouchStart={(event) => {
+              touchStartX.current = event.touches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(event) => {
+              const start = touchStartX.current;
+              const end = event.changedTouches[0]?.clientX;
+              touchStartX.current = null;
+              if (start === null || end === undefined || Math.abs(start - end) < 45) return;
+              moveSlide(end < start ? 1 : -1);
+            }}
+          >
+            {gallery.map((item, index) => (
+              <figure
+                key={item.label}
+                aria-hidden={index !== activeSlide}
+                className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${index === activeSlide ? "translate-x-0 opacity-100" : index < activeSlide ? "translate-x-full opacity-0" : "-translate-x-full opacity-0"}`}
+              >
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  width={912}
+                  height={1200}
+                  className="h-[370px] w-auto animate-floaty object-contain sm:h-[510px]"
+                />
+                <figcaption className="mt-2 font-display text-sm text-foreground">{item.label}</figcaption>
+              </figure>
+            ))}
+            <Button type="button" variant="glass" size="icon" className="absolute right-0 top-1/2 z-10 -translate-y-1/2" onClick={() => moveSlide(-1)} aria-label="الصورة السابقة">
+              <ChevronRight />
+            </Button>
+            <Button type="button" variant="glass" size="icon" className="absolute left-0 top-1/2 z-10 -translate-y-1/2" onClick={() => moveSlide(1)} aria-label="الصورة التالية">
+              <ChevronLeft />
+            </Button>
+            <div className="absolute inset-x-0 bottom-0 z-10 flex justify-center gap-2" aria-label="اختيار صورة">
+              {gallery.map((item, index) => (
+                <Button
+                  key={item.label}
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={`h-1.5 rounded-full transition-all ${index === activeSlide ? "w-8 bg-primary" : "w-2 bg-muted-foreground/40"}`}
+                  onClick={() => setActiveSlide(index)}
+                  aria-label={`عرض ${item.label}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mx-auto max-w-4xl animate-rise text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1.5 font-mono text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-primary" />وكيل خدمات شامل
+              <span className="size-1.5 rounded-full bg-primary" /> وكيلك الذكي لكل صفقة وخدمة
             </div>
             <h1 className="font-display text-5xl leading-[1.08] sm:text-6xl lg:text-7xl">
-              كل خدمة تحتاجها<br />
-              <span className="text-primary">بمحادثة واحدة</span>
+              اطلب. بِع. اشترِ.<br />
+              <span className="text-primary">وخلِّ الباقي على صفقة</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-              صفقة ليست للأجهزة فقط. اطلب قطعة غيار لسيارتك، ابحث عن شقة، احجز كهربائياً أو فني بناء، واطلب وجبتك من
-              مطعمك المفضل — كل ذلك داخل محادثة عربية بسيطة وواضحة.
+            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
+              صفقة وكيلك الذكي للوصول إلى ما تحتاجه بدقة: بيع وشراء السيارات والأجهزة، قطع الغيار، العقارات، الطعام،
+              الكهرباء، البناء، الصيانة، ومختلف الخدمات. اكتب طلبك كما تفكر به، ودع صفقة يرتّب التفاصيل ويقرّبك من العرض الأنسب.
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-4" id="download">
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4" id="download">
               <Button variant="hero" size="lg" onClick={download} disabled={loading}>
                 <ArrowDownToLine /> {loading ? "جارٍ التجهيز" : "حمّل التطبيق"}
               </Button>
@@ -125,20 +205,10 @@ function Index() {
               </span>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
-              <div><strong className="block font-display text-foreground">طلب</strong>صف حاجتك بكلماتك</div>
-              <div><strong className="block font-display text-foreground">مطابقة</strong>نصلك بالمزوّد المناسب</div>
-              <div><strong className="block font-display text-foreground">تنفيذ</strong>اتفاق وتسليم واضح</div>
+              <div><strong className="block font-display text-foreground">وضوح</strong>يفهم طلبك وتفاصيله</div>
+              <div><strong className="block font-display text-foreground">اختيار</strong>يقارن الفرص المناسبة</div>
+              <div><strong className="block font-display text-foreground">إنجاز</strong>يوصلك إلى صفقتك أسرع</div>
             </div>
-          </div>
-          <div className="relative animate-rise [animation-delay:120ms]">
-            <div className="pointer-events-none absolute inset-x-10 bottom-4 h-24 rounded-full bg-primary/15 blur-3xl" />
-            <img
-              src={appShowcase}
-              alt="واجهة تطبيق صفقة تعرض محادثة خدمة"
-              width={912}
-              height={1200}
-              className="relative mx-auto w-full max-w-[430px] animate-floaty object-contain"
-            />
           </div>
         </div>
       </section>
@@ -147,8 +217,8 @@ function Index() {
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> وكيل خدمات</span>
-              <h2 className="font-display text-3xl sm:text-4xl">خدماتنا تغطي حياتك اليومية</h2>
+              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> كل ما تبحث عنه في مكان واحد</span>
+              <h2 className="font-display text-3xl sm:text-4xl">من سيارة وعقار إلى أبسط خدمة يومية</h2>
             </div>
             <span className="font-mono text-xs text-muted-foreground">وكل خدمة أخرى تطلبها</span>
           </div>
@@ -167,42 +237,14 @@ function Index() {
         </div>
       </section>
 
-      <section id="gallery" className="border-t border-border px-5 py-20 sm:px-8">
-        <div className="mx-auto max-w-[1200px]">
-          <h2 className="mb-3 font-display text-3xl sm:text-4xl">من داخل التطبيق</h2>
-          <p className="mb-12 max-w-xl text-muted-foreground">
-            نفس التجربة لكل خدمة: تكتب، تشوف الصور والسعر، وتتفق — بدون تعقيد.
-          </p>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {gallery.map((item, index) => (
-              <figure key={item.label} className="text-center">
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-x-8 bottom-2 h-16 rounded-full bg-primary/15 blur-2xl" />
-                  <img
-                    src={item.src}
-                    alt={item.alt}
-                    loading="lazy"
-                    width={912}
-                    height={1200}
-                    className="relative mx-auto w-full max-w-[260px] animate-floaty object-contain"
-                    style={{ animationDelay: `${index * 500}ms` }}
-                  />
-                </div>
-                <figcaption className="mt-5 font-display text-sm text-foreground">{item.label}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="steps" className="border-t border-border px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-[1200px]">
           <h2 className="mb-10 font-display text-3xl sm:text-4xl">ثلاث خطوات لأي طلب</h2>
           <div className="grid gap-5 md:grid-cols-3">
             {[
-              ["01", "اكتب طلبك", "صف الخدمة أو المنتج والسعر والمدينة بكلمات بسيطة."],
-              ["02", "استلم المطابقة", "يعثر التطبيق على المزوّد أو الطرف المناسب لطلبك."],
-              ["03", "أغلق الصفقة", "تواصل، اتفق، وأكد إتمام الخدمة بثقة."],
+               ["01", "قل لنا ماذا تريد", "اكتب طلبك أو أرسل صورة وحدد المدينة والميزانية والتفاصيل المهمة."],
+               ["02", "دع صفقة يبحث بدلاً عنك", "ينظّم وكيلك الطلب ويقرّبك من البائع أو المشتري أو مقدم الخدمة المناسب."],
+               ["03", "اختر وأنهِ الاتفاق", "راجع التفاصيل، تواصل مباشرة، وأتم البيع أو الشراء أو الخدمة بوضوح."],
             ].map(([n, t, d]) => (
               <article key={n} className="rounded-xl border border-border bg-card p-7">
                 <span className="font-mono text-3xl text-primary/70">{n}</span>
