@@ -192,6 +192,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_message: { Args: { _message_id: string }; Returns: string }
+      admin_delete_thread: { Args: { _thread_id: string }; Returns: string[] }
       guest_messages: {
         Args: { _token: string }
         Returns: {
