@@ -21,11 +21,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SupportChat } from "@/components/support-chat";
 import { getAppDownload } from "@/lib/storage.functions";
-import appShowcase from "@/assets/safqa-app-showcase.png";
-import showcaseCar from "@/assets/showcase-car-parts.png";
-import showcaseFood from "@/assets/showcase-food.png";
-import showcaseHome from "@/assets/showcase-realestate.png";
-import showcaseServices from "@/assets/showcase-services.png";
+import showcaseCar from "@/assets/service-auto-real.png";
+import showcaseFood from "@/assets/service-food-real.png";
+import showcaseHome from "@/assets/service-property-real.png";
+import showcaseServices from "@/assets/service-maintenance-real.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,11 +57,10 @@ const categories = [
 ];
 
 const gallery = [
-  { src: appShowcase, alt: "واجهة تطبيق صفقة لطلب وشراء هاتف", label: "بيع وشراء الأجهزة" },
-  { src: showcaseCar, alt: "محادثة صفقة لطلب قطعة غيار سيارة", label: "قطع السيارات" },
-  { src: showcaseFood, alt: "محادثة صفقة لطلب بيتزا من مطعم", label: "المطاعم" },
-  { src: showcaseHome, alt: "محادثة صفقة لعرض شقة للإيجار", label: "العقارات" },
-  { src: showcaseServices, alt: "محادثة صفقة لطلب كهربائي وفني بناء", label: "الصيانة والبناء" },
+  { src: showcaseCar, alt: "هاتف يعرض طلب سيارة وقطع غيار أصلية", label: "سيارات وقطع غيار", note: "اشترِ سيارة أو اطلب القطعة الأصلية بالمواصفات والصورة" },
+  { src: showcaseFood, alt: "هاتف يعرض طلب بيتزا من مطعم", label: "مطاعم وطعام", note: "اختر وجبتك واترك لصفقة مهمة البحث والتنسيق" },
+  { src: showcaseHome, alt: "هاتف يعرض خيارات عقارات حقيقية", label: "بيع وإيجار العقارات", note: "حدّد المنطقة والميزانية ونوع العقار الذي تبحث عنه" },
+  { src: showcaseServices, alt: "هاتف مع مطرقة ومفتاح كهربائي حقيقي", label: "كهرباء وبناء وصيانة", note: "فنيون وأعمال منزلية ومقاولات حسب موعدك" },
 ];
 
 function Index() {
@@ -135,7 +133,7 @@ function Index() {
 
         <div className="relative z-10 mx-auto max-w-[1200px] px-5 pb-20 pt-5 sm:px-8 lg:pt-8">
           <div
-            className="relative mx-auto mb-10 min-h-[420px] max-w-[780px] overflow-hidden sm:min-h-[560px]"
+            className="relative mx-auto mb-10 min-h-[500px] max-w-[880px] overflow-hidden sm:min-h-[650px]"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}
@@ -156,11 +154,15 @@ function Index() {
                 <img
                   src={item.src}
                   alt={item.alt}
-                  width={912}
-                  height={1200}
-                  className="h-[370px] w-auto animate-floaty object-contain sm:h-[510px]"
+                  width={1024}
+                  height={1280}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  className="h-[410px] w-full animate-floaty object-contain sm:h-[550px]"
                 />
-                <figcaption className="mt-2 font-display text-sm text-foreground">{item.label}</figcaption>
+                <figcaption className="mt-1 max-w-md text-center">
+                  <strong className="block font-display text-base text-foreground">{item.label}</strong>
+                  <span className="mt-1 block text-sm text-muted-foreground">{item.note}</span>
+                </figcaption>
               </figure>
             ))}
             <Button type="button" variant="glass" size="icon" className="absolute right-0 top-1/2 z-10 -translate-y-1/2" onClick={() => moveSlide(-1)} aria-label="الصورة السابقة">
