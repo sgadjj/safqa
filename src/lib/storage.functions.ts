@@ -111,3 +111,58 @@ export const getAppDownload = createServerFn({ method: "GET" }).handler(async ()
     size: settings.apk_size,
   };
 });
+
+export const deleteAdminMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { messageId: string }) =>
+    z.object({ messageId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { data: imagePath, error } = await context.supabase.rpc("admin_delete_message", {
+      _message_id: data.messageId,
+    });
+    if (error) throw new Error("delete_message_failed");
+    if (imagePath) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.storage.from("chat-images").remove([imagePath]);
+    }
+    return { deleted: true };
+  });
+
+export const deleteAdminThread = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { threadId: string }) =>
+    z.object({ threadId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { data: imagePaths, error } = await context.supabase.rpc("admin_delete_thread", {
+      _thread_id: data.threadId,
+    });
+    if (error) throw new Error("delete_thread_failed");
+    if (imagePaths && imagePaths.length > 0) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.storage.from("chat-images").remove(imagePaths);
+    }
+    return { deleted: true };
+  });
+
+export const deleteApk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
+      .from("app_settings")
+      .select("apk_url")
+      .eq("id", true)
+      .maybeSingle();
+    if (settings?.apk_url) await supabaseAdmin.storage.from("app-downloads").remove([settings.apk_url]);
+    const { error } = await supabaseAdmin
+      .from("app_settings")
+      .update({ apk_url: null, apk_version: null, apk_size: null, updated_at: new Date().toISOString() })
+      .eq("id", true);
+    if (error) throw new Error("delete_apk_failed");
+    return { deleted: true };
+  });

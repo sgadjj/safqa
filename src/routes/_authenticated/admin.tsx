@@ -11,13 +11,32 @@ import {
   MessagesSquare,
   RefreshCw,
   Send,
+  Trash2,
   UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { createAdminImageUpload, createApkUpload, signAdminImages } from "@/lib/storage.functions";
+import {
+  createAdminImageUpload,
+  createApkUpload,
+  deleteAdminMessage,
+  deleteAdminThread,
+  deleteApk,
+  signAdminImages,
+} from "@/lib/storage.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -67,6 +86,7 @@ function AdminPage() {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [apkBusy, setApkBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "message" | "thread" | "apk"; id?: string } | null>(null);
   const [apkInfo, setApkInfo] = useState<{ version: string | null; size: number | null }>({ version: null, size: null });
   const fileRef = useRef<HTMLInputElement>(null);
   const apkRef = useRef<HTMLInputElement>(null);
@@ -75,6 +95,9 @@ function AdminPage() {
   const uploadImage = useServerFn(createAdminImageUpload);
   const signImages = useServerFn(signAdminImages);
   const uploadApk = useServerFn(createApkUpload);
+  const removeMessage = useServerFn(deleteAdminMessage);
+  const removeThread = useServerFn(deleteAdminThread);
+  const removeApk = useServerFn(deleteApk);
 
   const loadThreads = useCallback(async () => {
     const { data, error } = await supabase
@@ -221,6 +244,40 @@ function AdminPage() {
     await navigate({ to: "/auth", replace: true });
   }
 
+  async function confirmDelete() {
+    if (!deleteTarget || busy || apkBusy) return;
+    try {
+      if (deleteTarget.kind === "message" && deleteTarget.id) {
+        setBusy(true);
+        await removeMessage({ data: { messageId: deleteTarget.id } });
+        setMessages((items) => items.filter((item) => item.id !== deleteTarget.id));
+        toast.success("تم حذف الرسالة");
+      }
+      if (deleteTarget.kind === "thread" && deleteTarget.id) {
+        setBusy(true);
+        await removeThread({ data: { threadId: deleteTarget.id } });
+        setThreads((items) => items.filter((item) => item.id !== deleteTarget.id));
+        if (activeId === deleteTarget.id) {
+          setActiveId(null);
+          setMessages([]);
+        }
+        toast.success("تم حذف المحادثة");
+      }
+      if (deleteTarget.kind === "apk") {
+        setApkBusy(true);
+        await removeApk({});
+        setApkInfo({ version: null, size: null });
+        toast.success("تم حذف ملف التطبيق وإيقاف التحميل");
+      }
+      setDeleteTarget(null);
+    } catch {
+      toast.error("تعذر إتمام الحذف");
+    } finally {
+      setBusy(false);
+      setApkBusy(false);
+    }
+  }
+
   if (admin === null)
     return (
       <main className="grid min-h-screen place-items-center">
@@ -249,18 +306,19 @@ function AdminPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-5">
-          <Link to="/" className="flex items-center gap-2 font-display"><Handshake className="text-primary" />صفقة | الإدارة</Link>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-4">
+          <Link to="/" className="flex items-center gap-3 font-display"><span className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground"><Handshake className="size-5" /></span><span>صفقة <span className="text-muted-foreground">/ الإدارة</span></span></Link>
           <Button variant="ghost" onClick={signOut}><LogOut />خروج</Button>
         </div>
       </header>
 
       <div className="mx-auto max-w-[1280px] px-5 py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div>
-            <p className="text-sm text-primary">مركز الدعم</p>
-            <h1 className="font-display text-4xl">محادثات المستخدمين</h1>
+            <p className="text-sm text-primary">مركز التحكم</p>
+            <h1 className="font-display text-3xl sm:text-4xl">إدارة صفقة</h1>
+            <p className="mt-2 text-sm text-muted-foreground">تابع المحادثات، أدر ملف التطبيق، وأنجز طلبات الدعم من مكان واحد.</p>
           </div>
           <Button variant="glass" size="icon" onClick={() => void loadThreads()} aria-label="تحديث"><RefreshCw /></Button>
         </div>
@@ -280,7 +338,7 @@ function AdminPage() {
           ))}
         </div>
 
-        <section className="mt-6 rounded-xl border border-border bg-card/50 p-5 backdrop-blur-xl">
+        <section className="mt-6 border-y border-border bg-card/30 px-1 py-6 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="font-display text-lg">ملف التطبيق (APK)</h2>
@@ -290,37 +348,40 @@ function AdminPage() {
                   : "لم يُرفع أي ملف بعد — زر التحميل في الواجهة ينتظر الملف."}
               </p>
             </div>
-            <input ref={apkRef} type="file" accept=".apk" hidden onChange={handleApk} />
-            <Button variant="hero" disabled={apkBusy} onClick={() => apkRef.current?.click()}>
-              <UploadCloud />{apkBusy ? "جارٍ الرفع" : "رفع ملف APK"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <input ref={apkRef} type="file" accept=".apk" hidden onChange={handleApk} />
+              {apkInfo.version && <Button variant="outline" disabled={apkBusy} onClick={() => setDeleteTarget({ kind: "apk" })}><Trash2 />حذف الملف</Button>}
+              <Button variant="hero" disabled={apkBusy} onClick={() => apkRef.current?.click()}>
+                <UploadCloud />{apkBusy ? "جارٍ التنفيذ" : apkInfo.version ? "استبدال الملف" : "رفع ملف APK"}
+              </Button>
+            </div>
           </div>
         </section>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-2 rounded-xl border border-border bg-card/40 p-3">
+          <aside className="space-y-2 rounded-lg border border-border bg-card/40 p-3">
             {threads.length === 0 && (
               <p className="p-6 text-center text-sm text-muted-foreground">لا توجد محادثات بعد</p>
             )}
             {threads.map((thread) => (
-              <button
-                key={thread.id}
-                type="button"
-                onClick={() => setActiveId(thread.id)}
-                className={`w-full rounded-lg border p-3 text-right transition-colors ${thread.id === activeId ? "border-primary/60 bg-primary/10" : "border-border hover:bg-secondary/50"}`}
-              >
+              <div key={thread.id} className={`group flex items-center gap-1 rounded-lg border p-1 transition-colors ${thread.id === activeId ? "border-primary/60 bg-primary/10" : "border-border hover:bg-secondary/50"}`}>
+                <Button type="button" variant="ghost" onClick={() => setActiveId(thread.id)} className="h-auto min-w-0 flex-1 justify-start p-2 text-right hover:bg-transparent">
+                  <span className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-display text-sm">{thread.guest_label} · {thread.id.slice(0, 6)}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{statusLabel[thread.status]}</span>
+                  <Badge variant={thread.status === "resolved" ? "secondary" : "default"}>{statusLabel[thread.status]}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {new Date(thread.last_message_at).toLocaleString("ar-IQ")}
                 </p>
-              </button>
+                  </span>
+                </Button>
+                <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="حذف المحادثة" onClick={() => setDeleteTarget({ kind: "thread", id: thread.id })}><Trash2 /></Button>
+              </div>
             ))}
           </aside>
 
-          <section className="flex min-h-[520px] flex-col rounded-xl border border-border bg-card/40">
+          <section className="flex min-h-[520px] flex-col rounded-lg border border-border bg-card/40">
             {!active ? (
               <div className="grid flex-1 place-items-center p-10 text-center text-muted-foreground">
                 اختر محادثة من القائمة لعرض الرسائل والرد عليها
@@ -343,7 +404,9 @@ function AdminPage() {
                     const mine = message.sender === "admin";
                     return (
                       <div key={message.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
+                        <div className="group/message flex max-w-[86%] items-center gap-1 sm:max-w-[75%]">
+                        <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground opacity-60 hover:text-destructive sm:opacity-0 sm:group-hover/message:opacity-100" aria-label="حذف الرسالة" onClick={() => setDeleteTarget({ kind: "message", id: message.id })}><Trash2 className="size-4" /></Button>
+                        <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-6 ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
                           {message.body && <p className="whitespace-pre-wrap">{message.body}</p>}
                           {message.image_url && images[message.image_url] && (
                             <a href={images[message.image_url]} target="_blank" rel="noreferrer">
@@ -353,7 +416,7 @@ function AdminPage() {
                           <span className={`mt-1 block text-[11px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                             {new Date(message.created_at).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}
                           </span>
-                        </div>
+                        </div></div>
                       </div>
                     );
                   })}
@@ -379,6 +442,22 @@ function AdminPage() {
           </section>
         </div>
       </div>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent dir="rtl" className="max-w-md rounded-lg">
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.kind === "thread" && "سيتم حذف المحادثة وكل رسائلها وصورها نهائياً."}
+              {deleteTarget?.kind === "message" && "سيتم حذف هذه الرسالة ومرفقها نهائياً."}
+              {deleteTarget?.kind === "apk" && "سيتم حذف ملف التطبيق الحالي وإيقاف زر التحميل حتى ترفع ملفاً جديداً."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">حذف نهائي</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
