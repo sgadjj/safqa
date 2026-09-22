@@ -3,15 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowDownToLine,
-  Building2,
+  BadgeCheck,
   CarFront,
   ChevronLeft,
   ChevronRight,
   Handshake,
-  Hammer,
+  ClipboardCheck,
+  Gauge,
+  KeyRound,
   MessagesSquare,
-  Pizza,
-  Plug,
+  PackageSearch,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -21,24 +22,24 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SupportChat } from "@/components/support-chat";
 import { getAppDownload } from "@/lib/storage.functions";
-import showcaseCar from "@/assets/service-auto-real.png";
-import showcaseFood from "@/assets/service-food-real.png";
-import showcaseHome from "@/assets/service-property-real.png";
-import showcaseServices from "@/assets/service-maintenance-real.png";
+import showcaseMarket from "@/assets/auto-buy-sell.png";
+import showcaseParts from "@/assets/auto-parts.png";
+import showcaseRental from "@/assets/auto-rental.png";
+import showcaseInspection from "@/assets/auto-paperwork-inspection.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "صفقة | وكيل خدماتك في العراق" },
+      { title: "صفقة | وكيلك العام لخدمات السيارات في العراق" },
       {
         name: "description",
         content:
-          "صفقة وكيل خدمات شامل: أجهزة، قطع سيارات، عقارات، مطاعم، كهرباء وبناء. اطلب أي خدمة بمحادثة واحدة.",
+          "صفقة وكيلك العام للسيارات: بيع وشراء، قطع غيار، تأجير، فحص، صيانة ومعاملات السيارات في العراق.",
       },
-      { property: "og:title", content: "صفقة | وكيل خدماتك في العراق" },
+      { property: "og:title", content: "صفقة | وكيلك العام لخدمات السيارات" },
       {
         property: "og:description",
-        content: "اطلب أي خدمة أو منتج بمحادثة واحدة: قطع سيارات، عقارات، طعام، صيانة وأجهزة.",
+        content: "من شراء السيارة إلى قطع الغيار والمعقب والتأجير؛ صفقة يتابع طلبك ويوصلك للخيار المناسب.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -48,19 +49,19 @@ export const Route = createFileRoute("/")({
 });
 
 const categories = [
-  { icon: CarFront, title: "قطع غيار السيارات", text: "اطلب القطعة بالصورة والموديل ونصلك بأقرب مجهز موثوق." },
-  { icon: Building2, title: "العقارات", text: "بيع، شراء، أو إيجار شقة وأرض ومحل مع تفاصيل واضحة وصور." },
-  { icon: Pizza, title: "المطاعم والطعام", text: "اطلب وجبتك من مطاعم منطقتك وتابع طلبك حتى الباب." },
-  { icon: Plug, title: "الكهرباء والصيانة", text: "كهربائي، سبّاك، تكييف وتصليح أجهزة بموعد يناسبك." },
-  { icon: Hammer, title: "البناء والمقاولات", text: "مواد بناء، عمال، وتنفيذ أعمال بعرض سعر قبل البدء." },
-  { icon: Smartphone, title: "الأجهزة والإلكترونيات", text: "هواتف، حاسبات وأجهزة منزلية جديدة ومستعملة." },
+  { icon: CarFront, title: "بيع وشراء السيارات", text: "حدّد النوع والموديل والميزانية، ونساعدك بالبحث والمقارنة والوصول إلى عرض جاد وواضح." },
+  { icon: PackageSearch, title: "قطع الغيار والإكسسوارات", text: "أرسل رقم الشاصي أو صورة القطعة، ونبحث لك عن البديل المطابق من مصدر مناسب." },
+  { icon: KeyRound, title: "تأجير السيارات", text: "سيارة يومية أو شهرية، اقتصادية أو عائلية، بخيارات تناسب مدينتك ومدة استخدامك." },
+  { icon: ClipboardCheck, title: "المعقبون والمعاملات", text: "نوصلك بمعقّب لمتابعة التسجيل ونقل الملكية وتجديد السنوية والإجراءات المرتبطة بالسيارة." },
+  { icon: Gauge, title: "الفحص والصيانة", text: "فحص قبل الشراء وتشخيص أعطال وصيانة دورية لدى مختصين، حتى تتخذ قرارك على بيّنة." },
+  { icon: ShieldCheck, title: "الإنقاذ وخدمات الطريق", text: "سطحة، تبديل إطار، بطارية أو مساعدة طارئة؛ أرسل موقعك ونبحث عن أقرب خدمة متاحة." },
 ];
 
 const gallery = [
-  { src: showcaseCar, alt: "هاتف يعرض طلب سيارة وقطع غيار أصلية", label: "سيارات وقطع غيار", note: "اشترِ سيارة أو اطلب القطعة الأصلية بالمواصفات والصورة" },
-  { src: showcaseFood, alt: "هاتف يعرض طلب بيتزا من مطعم", label: "مطاعم وطعام", note: "اختر وجبتك واترك لصفقة مهمة البحث والتنسيق" },
-  { src: showcaseHome, alt: "هاتف يعرض خيارات عقارات حقيقية", label: "بيع وإيجار العقارات", note: "حدّد المنطقة والميزانية ونوع العقار الذي تبحث عنه" },
-  { src: showcaseServices, alt: "هاتف مع مطرقة ومفتاح كهربائي حقيقي", label: "كهرباء وبناء وصيانة", note: "فنيون وأعمال منزلية ومقاولات حسب موعدك" },
+  { src: showcaseMarket, alt: "هاتف يعرض سيارة حقيقية للبيع مع تفاصيلها", label: "بيع وشراء السيارات", note: "من أول بحث إلى المعاينة والاتفاق، نرتّب لك الخيارات الأنسب" },
+  { src: showcaseParts, alt: "هاتف يعرض طلب قرص فرامل مع قطع غيار حقيقية", label: "قطع غيار مطابقة", note: "صوّر القطعة أو أرسل رقم الشاصي حتى نبحث عن المطابق" },
+  { src: showcaseRental, alt: "هاتف يعرض سيارة دفع رباعي متاحة للتأجير", label: "تأجير حسب حاجتك", note: "يومي أو شهري، داخل مدينتك أو للسفر، بخيارات واضحة" },
+  { src: showcaseInspection, alt: "هاتف يعرض متابعة فحص سيارة ومعاملاتها", label: "معقب وفحص سيارات", note: "معاملات وفحص قبل الشراء حتى تمشي أمورك بثقة" },
 ];
 
 function Index() {
