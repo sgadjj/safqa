@@ -14,7 +14,6 @@ import {
   MessagesSquare,
   PackageSearch,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   Truck,
 } from "lucide-react";
@@ -123,9 +122,9 @@ function Index() {
             <span className="font-display text-xl">صفقة</span>
           </Button>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex" aria-label="التنقل الرئيسي">
-            <a href="#services" className="transition-colors hover:text-foreground">الخدمات</a>
+            <a href="#services" className="transition-colors hover:text-foreground">خدمات السيارات</a>
             <a href="#gallery" className="transition-colors hover:text-foreground">من داخل التطبيق</a>
-            <a href="#steps" className="transition-colors hover:text-foreground">كيف تعمل</a>
+            <a href="#steps" className="transition-colors hover:text-foreground">شلون نساعدك؟</a>
           </nav>
           <Button variant="glass" size="sm" onClick={download} disabled={loading}>
             <ArrowDownToLine /> تحميل
@@ -189,15 +188,15 @@ function Index() {
 
           <div className="mx-auto max-w-4xl animate-rise text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1.5 font-mono text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-primary" /> وكيلك الذكي لكل صفقة وخدمة
+              <span className="size-1.5 rounded-full bg-primary" /> وكيلك العام لكل ما يخص السيارات
             </div>
             <h1 className="font-display text-5xl leading-[1.08] sm:text-6xl lg:text-7xl">
-              اطلب. بِع. اشترِ.<br />
-              <span className="text-primary">وخلِّ الباقي على صفقة</span>
+              سيارتك إلها حل.<br />
+              <span className="text-primary">وصفقة يتابعها وياك</span>
             </h1>
             <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              صفقة وكيلك الذكي للوصول إلى ما تحتاجه بدقة: بيع وشراء السيارات والأجهزة، قطع الغيار، العقارات، الطعام،
-              الكهرباء، البناء، الصيانة، ومختلف الخدمات. اكتب طلبك كما تفكر به، ودع صفقة يرتّب التفاصيل ويقرّبك من العرض الأنسب.
+              تريد تبيع أو تشتري سيارة؟ تبحث عن قطعة غيار، معقّب، سيارة للإيجار أو فحص قبل الشراء؟
+              احچي لنا شتحتاج، وصفقة يرتّب طلبك بدقة ويقرّبك من الشخص أو الخدمة المناسبة بدون دوخة البحث.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-4" id="download">
               <Button variant="hero" size="lg" onClick={download} disabled={loading}>
@@ -208,9 +207,9 @@ function Index() {
               </span>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
-              <div><strong className="block font-display text-foreground">وضوح</strong>يفهم طلبك وتفاصيله</div>
-              <div><strong className="block font-display text-foreground">اختيار</strong>يقارن الفرص المناسبة</div>
-              <div><strong className="block font-display text-foreground">إنجاز</strong>يوصلك إلى صفقتك أسرع</div>
+                <div><strong className="block font-display text-foreground">طلب واضح</strong>نوع السيارة وكل التفاصيل</div>
+                <div><strong className="block font-display text-foreground">بحث أذكى</strong>خيارات مناسبة مو عشوائية</div>
+                <div><strong className="block font-display text-foreground">متابعة</strong>من الطلب إلى الاتفاق</div>
             </div>
           </div>
         </div>
@@ -220,10 +219,10 @@ function Index() {
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> كل ما تبحث عنه في مكان واحد</span>
-              <h2 className="font-display text-3xl sm:text-4xl">من سيارة وعقار إلى أبسط خدمة يومية</h2>
+              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> خدمات السيارة من مكان واحد</span>
+              <h2 className="font-display text-3xl sm:text-4xl">من شراء السيارة إلى أصغر قطعة بيها</h2>
             </div>
-            <span className="font-mono text-xs text-muted-foreground">وكل خدمة أخرى تطلبها</span>
+            <span className="font-mono text-xs text-muted-foreground">وخدمات سيارات أخرى حسب طلبك</span>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {categories.map((item) => {
@@ -242,12 +241,12 @@ function Index() {
 
       <section id="steps" className="border-t border-border px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-[1200px]">
-          <h2 className="mb-10 font-display text-3xl sm:text-4xl">ثلاث خطوات لأي طلب</h2>
+          <h2 className="mb-10 font-display text-3xl sm:text-4xl">أبو جاسم، الموضوع أبسط مما تتصور</h2>
           <div className="grid gap-5 md:grid-cols-3">
             {[
-               ["01", "قل لنا ماذا تريد", "اكتب طلبك أو أرسل صورة وحدد المدينة والميزانية والتفاصيل المهمة."],
-               ["02", "دع صفقة يبحث بدلاً عنك", "ينظّم وكيلك الطلب ويقرّبك من البائع أو المشتري أو مقدم الخدمة المناسب."],
-               ["03", "اختر وأنهِ الاتفاق", "راجع التفاصيل، تواصل مباشرة، وأتم البيع أو الشراء أو الخدمة بوضوح."],
+               ["01", "احچي لنا شتحتاج", "اكتب نوع السيارة والموديل والمدينة والميزانية، أو أرسل صورة القطعة مباشرة."],
+               ["02", "صفقة يتابع عنك", "نرتّب التفاصيل ونقرّبك من بائع أو مشتري أو صاحب خدمة يناسب طلبك."],
+               ["03", "راجع واختار براحتك", "قارن التفاصيل وتواصل لإكمال البيع أو الشراء أو الخدمة بقرار أوضح."],
             ].map(([n, t, d]) => (
               <article key={n} className="rounded-xl border border-border bg-card p-7">
                 <span className="font-mono text-3xl text-primary/70">{n}</span>
@@ -262,11 +261,11 @@ function Index() {
       <section className="border-t border-border px-5 py-20 sm:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-6 sm:grid-cols-3">
           {[
-            [ShieldCheck, "ثقة", "سجل واضح لكل اتفاق يحمي الطرفين."],
-            [Truck, "سرعة", "مزوّدون قريبون منك وتنفيذ بأقصر وقت."],
-            [MessagesSquare, "دعم مباشر", "اضغط زر المحادثة وأرسل رسالتك أو صورتك للإدارة فوراً."],
+            [BadgeCheck, "تفاصيل أدق", "نرتّب الموديل والسنة والمواصفات قبل البحث حتى نقلّل الخيارات غير المناسبة."],
+            [Truck, "خدمة أقرب", "نبحث ضمن مدينتك عن السيارة أو القطعة أو مزوّد الخدمة المناسب."],
+            [MessagesSquare, "محادثة مباشرة", "أرسل طلبك وصور السيارة أو القطعة، وتابع الرد من نفس المكان."],
           ].map(([Icon, title, text]) => {
-            const I = Icon as typeof ShieldCheck;
+            const I = Icon as typeof BadgeCheck;
             return (
               <article key={String(title)} className="rounded-xl border border-border bg-card/45 p-7 backdrop-blur-xl">
                 <span className="mb-5 grid size-11 place-items-center rounded-lg bg-primary/10 text-primary"><I /></span>
@@ -281,7 +280,7 @@ function Index() {
       <footer className="border-t border-border px-5 py-8">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
           <span className="font-display text-foreground">صفقة</span>
-          <span>وكيل خدمات شامل بالمحادثة</span>
+          <span>وكيلك العام لخدمات السيارات في العراق</span>
           <span className="font-mono text-xs">© 2026</span>
         </div>
       </footer>
