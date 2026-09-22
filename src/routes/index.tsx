@@ -3,17 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowDownToLine,
-  Building2,
+  BadgeCheck,
   CarFront,
   ChevronLeft,
   ChevronRight,
   Handshake,
-  Hammer,
+  ClipboardCheck,
+  Gauge,
+  KeyRound,
   MessagesSquare,
-  Pizza,
-  Plug,
+  PackageSearch,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   Truck,
 } from "lucide-react";
@@ -21,24 +21,24 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SupportChat } from "@/components/support-chat";
 import { getAppDownload } from "@/lib/storage.functions";
-import showcaseCar from "@/assets/service-auto-real.png";
-import showcaseFood from "@/assets/service-food-real.png";
-import showcaseHome from "@/assets/service-property-real.png";
-import showcaseServices from "@/assets/service-maintenance-real.png";
+import showcaseMarket from "@/assets/auto-buy-sell.png";
+import showcaseParts from "@/assets/auto-parts.png";
+import showcaseRental from "@/assets/auto-rental.png";
+import showcaseInspection from "@/assets/auto-paperwork-inspection.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "صفقة | وكيل خدماتك في العراق" },
+      { title: "صفقة | وكيلك العام لخدمات السيارات في العراق" },
       {
         name: "description",
         content:
-          "صفقة وكيل خدمات شامل: أجهزة، قطع سيارات، عقارات، مطاعم، كهرباء وبناء. اطلب أي خدمة بمحادثة واحدة.",
+          "صفقة وكيلك العام للسيارات: بيع وشراء، قطع غيار، تأجير، فحص، صيانة ومعاملات السيارات في العراق.",
       },
-      { property: "og:title", content: "صفقة | وكيل خدماتك في العراق" },
+      { property: "og:title", content: "صفقة | وكيلك العام لخدمات السيارات" },
       {
         property: "og:description",
-        content: "اطلب أي خدمة أو منتج بمحادثة واحدة: قطع سيارات، عقارات، طعام، صيانة وأجهزة.",
+        content: "من شراء السيارة إلى قطع الغيار والمعقب والتأجير؛ صفقة يتابع طلبك ويوصلك للخيار المناسب.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -48,19 +48,19 @@ export const Route = createFileRoute("/")({
 });
 
 const categories = [
-  { icon: CarFront, title: "قطع غيار السيارات", text: "اطلب القطعة بالصورة والموديل ونصلك بأقرب مجهز موثوق." },
-  { icon: Building2, title: "العقارات", text: "بيع، شراء، أو إيجار شقة وأرض ومحل مع تفاصيل واضحة وصور." },
-  { icon: Pizza, title: "المطاعم والطعام", text: "اطلب وجبتك من مطاعم منطقتك وتابع طلبك حتى الباب." },
-  { icon: Plug, title: "الكهرباء والصيانة", text: "كهربائي، سبّاك، تكييف وتصليح أجهزة بموعد يناسبك." },
-  { icon: Hammer, title: "البناء والمقاولات", text: "مواد بناء، عمال، وتنفيذ أعمال بعرض سعر قبل البدء." },
-  { icon: Smartphone, title: "الأجهزة والإلكترونيات", text: "هواتف، حاسبات وأجهزة منزلية جديدة ومستعملة." },
+  { icon: CarFront, title: "بيع وشراء السيارات", text: "حدّد النوع والموديل والميزانية، ونساعدك بالبحث والمقارنة والوصول إلى عرض جاد وواضح." },
+  { icon: PackageSearch, title: "قطع الغيار والإكسسوارات", text: "أرسل رقم الشاصي أو صورة القطعة، ونبحث لك عن البديل المطابق من مصدر مناسب." },
+  { icon: KeyRound, title: "تأجير السيارات", text: "سيارة يومية أو شهرية، اقتصادية أو عائلية، بخيارات تناسب مدينتك ومدة استخدامك." },
+  { icon: ClipboardCheck, title: "المعقبون والمعاملات", text: "نوصلك بمعقّب لمتابعة التسجيل ونقل الملكية وتجديد السنوية والإجراءات المرتبطة بالسيارة." },
+  { icon: Gauge, title: "الفحص والصيانة", text: "فحص قبل الشراء وتشخيص أعطال وصيانة دورية لدى مختصين، حتى تتخذ قرارك على بيّنة." },
+  { icon: ShieldCheck, title: "الإنقاذ وخدمات الطريق", text: "سطحة، تبديل إطار، بطارية أو مساعدة طارئة؛ أرسل موقعك ونبحث عن أقرب خدمة متاحة." },
 ];
 
 const gallery = [
-  { src: showcaseCar, alt: "هاتف يعرض طلب سيارة وقطع غيار أصلية", label: "سيارات وقطع غيار", note: "اشترِ سيارة أو اطلب القطعة الأصلية بالمواصفات والصورة" },
-  { src: showcaseFood, alt: "هاتف يعرض طلب بيتزا من مطعم", label: "مطاعم وطعام", note: "اختر وجبتك واترك لصفقة مهمة البحث والتنسيق" },
-  { src: showcaseHome, alt: "هاتف يعرض خيارات عقارات حقيقية", label: "بيع وإيجار العقارات", note: "حدّد المنطقة والميزانية ونوع العقار الذي تبحث عنه" },
-  { src: showcaseServices, alt: "هاتف مع مطرقة ومفتاح كهربائي حقيقي", label: "كهرباء وبناء وصيانة", note: "فنيون وأعمال منزلية ومقاولات حسب موعدك" },
+  { src: showcaseMarket, alt: "هاتف يعرض سيارة حقيقية للبيع مع تفاصيلها", label: "بيع وشراء السيارات", note: "من أول بحث إلى المعاينة والاتفاق، نرتّب لك الخيارات الأنسب" },
+  { src: showcaseParts, alt: "هاتف يعرض طلب قرص فرامل مع قطع غيار حقيقية", label: "قطع غيار مطابقة", note: "صوّر القطعة أو أرسل رقم الشاصي حتى نبحث عن المطابق" },
+  { src: showcaseRental, alt: "هاتف يعرض سيارة دفع رباعي متاحة للتأجير", label: "تأجير حسب حاجتك", note: "يومي أو شهري، داخل مدينتك أو للسفر، بخيارات واضحة" },
+  { src: showcaseInspection, alt: "هاتف يعرض متابعة فحص سيارة ومعاملاتها", label: "معقب وفحص سيارات", note: "معاملات وفحص قبل الشراء حتى تمشي أمورك بثقة" },
 ];
 
 function Index() {
@@ -122,9 +122,9 @@ function Index() {
             <span className="font-display text-xl">صفقة</span>
           </Button>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex" aria-label="التنقل الرئيسي">
-            <a href="#services" className="transition-colors hover:text-foreground">الخدمات</a>
+            <a href="#services" className="transition-colors hover:text-foreground">خدمات السيارات</a>
             <a href="#gallery" className="transition-colors hover:text-foreground">من داخل التطبيق</a>
-            <a href="#steps" className="transition-colors hover:text-foreground">كيف تعمل</a>
+            <a href="#steps" className="transition-colors hover:text-foreground">شلون نساعدك؟</a>
           </nav>
           <Button variant="glass" size="sm" onClick={download} disabled={loading}>
             <ArrowDownToLine /> تحميل
@@ -133,6 +133,7 @@ function Index() {
 
         <div className="relative z-10 mx-auto max-w-[1200px] px-5 pb-20 pt-5 sm:px-8 lg:pt-8">
           <div
+            id="gallery"
             className="relative mx-auto mb-10 min-h-[500px] max-w-[880px] overflow-hidden sm:min-h-[650px]"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
@@ -188,15 +189,15 @@ function Index() {
 
           <div className="mx-auto max-w-4xl animate-rise text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1.5 font-mono text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-primary" /> وكيلك الذكي لكل صفقة وخدمة
+              <span className="size-1.5 rounded-full bg-primary" /> وكيلك العام لكل ما يخص السيارات
             </div>
             <h1 className="font-display text-5xl leading-[1.08] sm:text-6xl lg:text-7xl">
-              اطلب. بِع. اشترِ.<br />
-              <span className="text-primary">وخلِّ الباقي على صفقة</span>
+              سيارتك إلها حل.<br />
+              <span className="text-primary">وصفقة يتابعها وياك</span>
             </h1>
             <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              صفقة وكيلك الذكي للوصول إلى ما تحتاجه بدقة: بيع وشراء السيارات والأجهزة، قطع الغيار، العقارات، الطعام،
-              الكهرباء، البناء، الصيانة، ومختلف الخدمات. اكتب طلبك كما تفكر به، ودع صفقة يرتّب التفاصيل ويقرّبك من العرض الأنسب.
+              تريد تبيع أو تشتري سيارة؟ تبحث عن قطعة غيار، معقّب، سيارة للإيجار أو فحص قبل الشراء؟
+              احچي لنا شتحتاج، وصفقة يرتّب طلبك بدقة ويقرّبك من الشخص أو الخدمة المناسبة بدون دوخة البحث.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-4" id="download">
               <Button variant="hero" size="lg" onClick={download} disabled={loading}>
@@ -207,9 +208,9 @@ function Index() {
               </span>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
-              <div><strong className="block font-display text-foreground">وضوح</strong>يفهم طلبك وتفاصيله</div>
-              <div><strong className="block font-display text-foreground">اختيار</strong>يقارن الفرص المناسبة</div>
-              <div><strong className="block font-display text-foreground">إنجاز</strong>يوصلك إلى صفقتك أسرع</div>
+                <div><strong className="block font-display text-foreground">طلب واضح</strong>نوع السيارة وكل التفاصيل</div>
+                <div><strong className="block font-display text-foreground">بحث أذكى</strong>خيارات مناسبة مو عشوائية</div>
+                <div><strong className="block font-display text-foreground">متابعة</strong>من الطلب إلى الاتفاق</div>
             </div>
           </div>
         </div>
@@ -219,10 +220,10 @@ function Index() {
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> كل ما تبحث عنه في مكان واحد</span>
-              <h2 className="font-display text-3xl sm:text-4xl">من سيارة وعقار إلى أبسط خدمة يومية</h2>
+              <span className="mb-3 inline-flex items-center gap-2 text-sm text-primary"><Sparkles className="size-4" /> خدمات السيارة من مكان واحد</span>
+              <h2 className="font-display text-3xl sm:text-4xl">من شراء السيارة إلى أصغر قطعة بيها</h2>
             </div>
-            <span className="font-mono text-xs text-muted-foreground">وكل خدمة أخرى تطلبها</span>
+            <span className="font-mono text-xs text-muted-foreground">وخدمات سيارات أخرى حسب طلبك</span>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {categories.map((item) => {
@@ -241,12 +242,12 @@ function Index() {
 
       <section id="steps" className="border-t border-border px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-[1200px]">
-          <h2 className="mb-10 font-display text-3xl sm:text-4xl">ثلاث خطوات لأي طلب</h2>
+          <h2 className="mb-10 font-display text-3xl sm:text-4xl">أبو جاسم، الموضوع أبسط مما تتصور</h2>
           <div className="grid gap-5 md:grid-cols-3">
             {[
-               ["01", "قل لنا ماذا تريد", "اكتب طلبك أو أرسل صورة وحدد المدينة والميزانية والتفاصيل المهمة."],
-               ["02", "دع صفقة يبحث بدلاً عنك", "ينظّم وكيلك الطلب ويقرّبك من البائع أو المشتري أو مقدم الخدمة المناسب."],
-               ["03", "اختر وأنهِ الاتفاق", "راجع التفاصيل، تواصل مباشرة، وأتم البيع أو الشراء أو الخدمة بوضوح."],
+               ["01", "احچي لنا شتحتاج", "اكتب نوع السيارة والموديل والمدينة والميزانية، أو أرسل صورة القطعة مباشرة."],
+               ["02", "صفقة يتابع عنك", "نرتّب التفاصيل ونقرّبك من بائع أو مشتري أو صاحب خدمة يناسب طلبك."],
+               ["03", "راجع واختار براحتك", "قارن التفاصيل وتواصل لإكمال البيع أو الشراء أو الخدمة بقرار أوضح."],
             ].map(([n, t, d]) => (
               <article key={n} className="rounded-xl border border-border bg-card p-7">
                 <span className="font-mono text-3xl text-primary/70">{n}</span>
@@ -261,11 +262,11 @@ function Index() {
       <section className="border-t border-border px-5 py-20 sm:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-6 sm:grid-cols-3">
           {[
-            [ShieldCheck, "ثقة", "سجل واضح لكل اتفاق يحمي الطرفين."],
-            [Truck, "سرعة", "مزوّدون قريبون منك وتنفيذ بأقصر وقت."],
-            [MessagesSquare, "دعم مباشر", "اضغط زر المحادثة وأرسل رسالتك أو صورتك للإدارة فوراً."],
+            [BadgeCheck, "تفاصيل أدق", "نرتّب الموديل والسنة والمواصفات قبل البحث حتى نقلّل الخيارات غير المناسبة."],
+            [Truck, "خدمة أقرب", "نبحث ضمن مدينتك عن السيارة أو القطعة أو مزوّد الخدمة المناسب."],
+            [MessagesSquare, "محادثة مباشرة", "أرسل طلبك وصور السيارة أو القطعة، وتابع الرد من نفس المكان."],
           ].map(([Icon, title, text]) => {
-            const I = Icon as typeof ShieldCheck;
+            const I = Icon as typeof BadgeCheck;
             return (
               <article key={String(title)} className="rounded-xl border border-border bg-card/45 p-7 backdrop-blur-xl">
                 <span className="mb-5 grid size-11 place-items-center rounded-lg bg-primary/10 text-primary"><I /></span>
@@ -280,7 +281,7 @@ function Index() {
       <footer className="border-t border-border px-5 py-8">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
           <span className="font-display text-foreground">صفقة</span>
-          <span>وكيل خدمات شامل بالمحادثة</span>
+          <span>وكيلك العام لخدمات السيارات في العراق</span>
           <span className="font-mono text-xs">© 2026</span>
         </div>
       </footer>

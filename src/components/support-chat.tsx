@@ -137,8 +137,8 @@ export function SupportChat() {
                   <MessagesSquare className="size-5" />
                 </span>
                 <div>
-                  <p className="font-display text-sm">دعم صفقة</p>
-                  <p className="text-xs text-primary">نرد عليك بأسرع وقت</p>
+                  <p className="font-display text-sm">مستشار صفقة للسيارات</p>
+                  <p className="text-xs text-primary">احچي لنا شتحتاج بسيارتك</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" aria-label="إغلاق" onClick={() => setOpen(false)}>
@@ -149,7 +149,7 @@ export function SupportChat() {
             <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                  اكتب رسالتك وسيصلك رد فريق صفقة هنا. يمكنك إرفاق صورة أيضاً.
+                  هلا بيك، اكتب نوع السيارة والخدمة المطلوبة، أو أرسل صورة للسيارة أو القطعة، وفريق صفقة يتابع وياك هنا.
                 </p>
               )}
               {messages.map((message) => {
@@ -190,7 +190,7 @@ export function SupportChat() {
               <Input
                 value={text}
                 onChange={(event) => setText(event.target.value)}
-                placeholder="اكتب رسالتك..."
+                placeholder="مثلاً: أريد قطعة لكورولا 2020"
                 maxLength={2000}
                 aria-label="نص الرسالة"
               />
