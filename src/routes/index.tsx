@@ -133,6 +133,7 @@ function Index() {
 
         <div className="relative z-10 mx-auto max-w-[1200px] px-5 pb-20 pt-5 sm:px-8 lg:pt-8">
           <div
+            id="gallery"
             className="relative mx-auto mb-10 min-h-[500px] max-w-[880px] overflow-hidden sm:min-h-[650px]"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
