@@ -22,12 +22,28 @@ jobs:
       - run: bun run build
         env:
           VITE_BASE_PATH: "/safqa/"
-      - name: SPA fallback
-        run: cp dist/client/index.html dist/client/404.html
+      - name: Prepare Pages files
+        shell: bash
+        run: |
+          rm -rf pages-dist
+          mkdir -p pages-dist
+          if find dist/client -type f -name index.html -print -quit 2>/dev/null | grep -q .; then
+            cp -R dist/client/. pages-dist/
+          elif find .output/public -type f -name index.html -print -quit 2>/dev/null | grep -q .; then
+            cp -R .output/public/. pages-dist/
+          elif find dist -type f -name index.html -print -quit 2>/dev/null | grep -q .; then
+            cp -R dist/. pages-dist/
+          else
+            echo "No generated index.html was found"
+            exit 1
+          fi
+          ENTRY=$(find pages-dist -type f -name index.html | sort | head -n 1)
+          if [ "$ENTRY" != "pages-dist/index.html" ]; then cp "$ENTRY" pages-dist/index.html; fi
+          cp pages-dist/index.html pages-dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
+          path: pages-dist
   deploy:
     needs: build
     environment:
