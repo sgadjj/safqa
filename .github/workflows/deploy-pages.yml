@@ -39,6 +39,8 @@ jobs:
           fi
           ENTRY=$(find pages-dist -type f -name index.html | sort | head -n 1)
           if [ "$ENTRY" != "pages-dist/index.html" ]; then cp "$ENTRY" pages-dist/index.html; fi
+          # auto-clean Lovable marks on every deploy (updates synced from Lovable)
+          find pages-dist -type f -name "*.html" -print0 | xargs -0 -r perl -0pi -e 's/<script[^>]*(gpteng\.co|lovable)[^>]*>.*?<\/script>//gis; s/<meta[^>]*(lovable|gpteng)[^>]*>//gi; s/Lovable Generated Project//gi'
           cp pages-dist/index.html pages-dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
